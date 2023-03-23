@@ -12,7 +12,8 @@ from dash.dependencies import Input, Output, State
 import dash_table as dt
 import pandas as pd
 import brapi_v2
-import json
+#from plotly.tools import figure_factory as FF
+#import json
 
 app = dash.Dash()
     
@@ -20,28 +21,29 @@ def get_study_options(studies_dict):
     return list(map(lambda study: {'label': study['studyName'], 'value': study['studyDbId']}, studies_dict))
 
 app.layout = html.Div(id = 'parent', children = [
-    html.H2(id='title', children='BrAPI Phenotype QC'),
+    html.H2(id='title', children='BrAPI Phenotype Timeseries'),
         dcc.Input(id='brapi-url', placeholder='Enter a url...', type='text', value=''),
         html.Button(id='get-studies-button', n_clicks=0, children='Get Studies'),
         html.Div(children = [
             html.Label('Select Study:', style={'font-weight': 'bold'}),
             dcc.Dropdown(id='studies-dropdown'),
         ]),
-        html.Label('Save New Study:', style={'font-weight': 'bold'}),
-        html.Div(children = [
-            html.Label('Log message:'),
-            dcc.Input(id='change-msg', type='text', size='80'),
-            html.Label('Study name:'),
-            dcc.Input(id='qc-study-name', type='text', size='30'),
-            html.Button(id='save-study-button', n_clicks=0, children='Save New Study'),
-        ]),
+        # html.Label('Save New Study:', style={'font-weight': 'bold'}),
+        # html.Div(children = [
+        #     html.Label('Log message:'),
+        #     dcc.Input(id='change-msg', type='text', size='80'),
+        #     html.Label('Study name:'),
+        #     dcc.Input(id='qc-study-name', type='text', size='30'),
+        #     html.Button(id='save-study-button', n_clicks=0, children='Save New Study'),
+        # ]),
         html.P(),
         html.Label('Plot Configuration:', style={'font-weight': 'bold'}),
         html.Div(children = [
             html.Label('Plot type:'),
             dcc.Dropdown(id='plot-type-dropdown', options=[
                 {'label': 'Histogram', 'value': 'Histogram'},
-                {'label': 'Scatter Plot', 'value': 'Scatter Plot'}],
+                {'label': 'Scatter Plot', 'value': 'Scatter Plot'},
+                {'label': 'Density Plot', 'value': 'Density Plot'}],
                 value='Histogram'
             ),
             html.Label('Variable:'),
@@ -120,21 +122,29 @@ def display_observations_plot(observations, variable_name, plot_type):
             fig = px.scatter(obs_df, x='observationTimeStamp', y='value',
                              color='observationVariableName', custom_data=['observationDbId'],
                              marginal_x="box", marginal_y="box",
-                             labels={'observationVariableName': 'Variable name'})
+                             labels={'observationVariableName': 'Variable name'}
+                              )
             fig.update_layout(title = 'Observation values over time with marginal distributions',
                               xaxis_title = 'Date',
                               yaxis_title = 'Value'
                               )
             return fig
         if plot_type == 'Histogram':
+            obs_df['observationTimeStamp']=obs_df['observationTimeStamp'].str.split("T").str[0]
+            
             fig = px.histogram(obs_df, x='value',
-                               color='observationVariableName',
-                               labels={'observationVariableName': 'Variable name'})
+                               color='observationTimeStamp',
+                               histnorm="density",
+                               marginal="box",
+                               labels={'observationVariableName': 'Variable name'}
+                                       )
             fig.update_layout(title = 'Observation values histogram',
                               xaxis_title = 'Value',
                               yaxis_title = 'Count'
                               )
+            
             return fig
+        
     return px.scatter()
 
 @app.callback(Output('selected-observation-ids', 'data'),
